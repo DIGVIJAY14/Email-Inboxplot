@@ -1,0 +1,707 @@
+{
+  "name": "InboxPilot",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "id": "ea6d5c22-9950-4f8e-ae66-963c6c89f958",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "position": [
+        -528,
+        -336
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "RKhhilfAbRBPkyoh",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ed8beae-9ef7-46b7-9aca-5cd83412bceb",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ [\"high\", \"critical\"].includes($json.urgency.toLowerCase()) }}",
+              "rightValue": "high"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "26b873fc-9edb-4373-aaa0-de655c515a3d",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        368,
+        -336
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Expression",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an AI Email Assistant.  Your job is to analyze the email subject and body, understand the complete context, identify the true purpose of the email, determine its importance, and return ONLY valid JSON.  STRICT RULES:  1. Return ONLY valid JSON. 2. Do NOT return markdown. 3. Do NOT explain anything. 4. Do NOT wrap JSON inside quotes. 5. Do NOT return ```json. 6. Every field MUST exist. 7. Do NOT include any fields other than the ones specified. 8. Never leave any field empty. 9. Ignore signatures, disclaimers, unsubscribe text, tracking information, and email footers unless they affect the email meaning. 10. Base your decision on the complete email context, not only keywords. 11. Never return null, undefined, or an empty string (\"\") for any field. 12. If the email content is insufficient, still return the closest valid category instead of leaving fields empty.  CATEGORY (Allowed values ONLY):  newsletter important meeting spam low  Category Decision Rules:  meeting - Calendar invitation - Meeting request - Interview invitation - Interview schedule - Zoom, Google Meet or Microsoft Teams invite - Appointment confirmation - Event requiring attendance - Request to schedule a meeting or call  important - Action required - Personal communication - Client communication - Work updates - HR emails - Offer letters - Invoice requiring attention - Payment reminders - Security alerts - OTP or verification emails - Password reset - Bank notifications - Legal notices - Shipping updates - Order confirmations - Support tickets - Account-related notifications - Deadlines - Project updates - Anything requiring user attention  newsletter - Weekly/monthly newsletter - Blog updates - Educational emails - Product announcements - Marketing newsletters  spam - Scam - Phishing - Fake prize - Lottery - Crypto scam - Adult content - Fraud - Suspicious attachment - Fake investment - Excessive spam  low - Promotions - Coupons - Discounts - Shopping recommendations - Social media notifications - Generic notifications - Greetings with no actionable content - Informational emails - Emails requiring no action  If multiple categories apply, always choose the highest priority:  meeting > important > spam > newsletter > low  URGENCY (Allowed values ONLY):  critical high medium low  critical - OTP - Password reset - Banking alert - Fraud alert - Security alert - Account compromise - Immediate payment issue - Legal deadline today  high - Meeting today - Interview - Calendar invite - Deadline within 48 hours - Client response needed - Manager request - Approval request  medium - General work emails - HR communication - Shipping updates - Order confirmation - Project updates - Moderate action required  low - Newsletter - Promotion - Advertisement - Social notification - Greeting - Informational email - No action required  PRIORITY SCORE  Return an integer between 0 and 100.  95-100 = Critical security, OTP, banking, fraud 80-94 = Meeting, interview, urgent work 60-79 = Important work, invoices, HR, shipping 30-59 = Newsletter, educational updates 0-29 = Low priority, promotions, spam  SUMMARY  Write a concise summary in a maximum of 2 sentences. Mention: - Main purpose - Required action (if any) - Important people, company, meeting or deadline when available.  OUTPUT FORMAT  {   \"summary\":\"\",   \"category\":\"\",   \"urgency\":\"\",   \"priority_score\":0 }  IMPORTANT VALIDATION RULES  Before returning the response, verify:  - The response is valid JSON. - Every field exists. - No field is empty. - summary must never be empty. - category must be exactly one of:   newsletter   important   meeting   spam   low - urgency must be exactly one of:   critical   high   medium   low - priority_score must be an integer between 0 and 100.  Fallback Rules (MANDATORY)  If the email contains only greetings like \"Hi\", \"Hello\", \"Good Morning\", has no meaningful body, or the intent cannot be confidently determined, return:  {   \"summary\":\"Low-priority informational email.\",   \"category\":\"low\",   \"urgency\":\"low\",   \"priority_score\":10 }  Never leave category, urgency, summary, or priority_score empty.  If uncertain, always choose the closest valid category rather than returning blank values.  Return ONLY the JSON object."
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=Analyze this email.\n\nSubject:\n{{ $json.Subject }}\n\nBody:\n{{ $json.snippet }}\n\nReturn ONLY JSON."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -288,
+        -336
+      ],
+      "id": "6ad926fb-233e-4354-bdcb-fb3a04162db1",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -160
+      ],
+      "id": "2384b9fc-ec3c-483a-a5ef-f6ebf37a52d3",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "jSrJyoMxfgH948RS",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c32cd57-6c34-4ac5-b2f4-88c77457f6e1",
+              "name": "summary",
+              "value": "={{ JSON.parse($json.text).summary }}",
+              "type": "string"
+            },
+            {
+              "id": "fb527bb9-4567-4b09-8b54-5a84d74cc59d",
+              "name": "category",
+              "value": "={{ JSON.parse($json.text).category }}",
+              "type": "string"
+            },
+            {
+              "id": "fb7d98ff-d0b9-498b-b91c-4dd57e472ed1",
+              "name": "urgency",
+              "value": "={{ JSON.parse($json.text).urgency }}",
+              "type": "string"
+            },
+            {
+              "id": "97eabacc-eb88-4492-9134-d36f27827afd",
+              "name": "subject",
+              "value": "={{ $('Gmail Trigger').item.json.Subject }}",
+              "type": "string"
+            },
+            {
+              "id": "4035ce03-bfe5-46d5-b353-172529b78799",
+              "name": "sender",
+              "value": "={{ $('Gmail Trigger').item.json.From }}",
+              "type": "string"
+            },
+            {
+              "id": "d5f5c6eb-4e23-41dc-adfb-7bbde198c7df",
+              "name": "sender email",
+              "value": "={{ $('Gmail Trigger').item.json.From.match(/<(.+?)>/)?.[1] || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b325ee3c-9628-43f5-a68d-accc962949a9",
+              "name": "date",
+              "value": "={{ new Date(Number($('Gmail Trigger').item.json.internalDate)).toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "3be9a8f6-61d3-4dcd-a1df-2dfee03a1235",
+              "name": "priority_score",
+              "value": "={{ JSON.parse($json.text).priority_score }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        -336
+      ],
+      "id": "939cdcef-e8de-4200-a9da-cd5acf364cd8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appiGpAqhsawd0HjA",
+          "mode": "list",
+          "cachedResultName": "Inboxpilot",
+          "cachedResultUrl": "https://airtable.com/appiGpAqhsawd0HjA"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblYDJGOJPITuGjyz",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appiGpAqhsawd0HjA/tblYDJGOJPITuGjyz"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Subject": "={{ $json.Subject }}",
+            "Sender": "={{ $json.sender }}",
+            "Summary": "={{ $json.summary }}",
+            "Category": "={{ $json.category }}",
+            "Priority Score": "={{ $json.priority_score }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Email": "={{ $json['sender email'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sender",
+              "displayName": "Sender",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "urgent",
+                  "value": "urgent"
+                },
+                {
+                  "name": "important",
+                  "value": "important"
+                },
+                {
+                  "name": "meeting",
+                  "value": "meeting"
+                },
+                {
+                  "name": "follow_up",
+                  "value": "follow_up"
+                },
+                {
+                  "name": "newsletter",
+                  "value": "newsletter"
+                },
+                {
+                  "name": "spam",
+                  "value": "spam"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "critical",
+                  "value": "critical"
+                },
+                {
+                  "name": "high",
+                  "value": "high"
+                },
+                {
+                  "name": "medium",
+                  "value": "medium"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "reply_needed",
+                  "value": "reply_needed"
+                },
+                {
+                  "name": "meeting_request",
+                  "value": "meeting_request"
+                },
+                {
+                  "name": "informational",
+                  "value": "informational"
+                },
+                {
+                  "name": "follow_up",
+                  "value": "follow_up"
+                },
+                {
+                  "name": "spam",
+                  "value": "spam"
+                },
+                {
+                  "name": "no_action",
+                  "value": "no_action"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Priority Score",
+              "displayName": "Priority Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        -432
+      ],
+      "id": "186b7adc-6bca-4d46-82e8-a1d137afab75",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KPMecmp5PJDbMZgt",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appiGpAqhsawd0HjA",
+          "mode": "list",
+          "cachedResultName": "Inboxpilot",
+          "cachedResultUrl": "https://airtable.com/appiGpAqhsawd0HjA"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblYDJGOJPITuGjyz",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appiGpAqhsawd0HjA/tblYDJGOJPITuGjyz"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Subject": "={{ $json.subject }}",
+            "Sender": "={{ $json.sender }}",
+            "Summary": "={{ $json.summary }}",
+            "Category": "={{ $json.category }}",
+            "Priority Score": "={{ $json.priority_score ?? 0 }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Email": "={{ $json['sender email'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Subject",
+              "displayName": "Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sender",
+              "displayName": "Sender",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "urgent",
+                  "value": "urgent"
+                },
+                {
+                  "name": "important",
+                  "value": "important"
+                },
+                {
+                  "name": "meeting",
+                  "value": "meeting"
+                },
+                {
+                  "name": "follow_up",
+                  "value": "follow_up"
+                },
+                {
+                  "name": "newsletter",
+                  "value": "newsletter"
+                },
+                {
+                  "name": "spam",
+                  "value": "spam"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "critical",
+                  "value": "critical"
+                },
+                {
+                  "name": "high",
+                  "value": "high"
+                },
+                {
+                  "name": "medium",
+                  "value": "medium"
+                },
+                {
+                  "name": "low",
+                  "value": "low"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Intent",
+              "displayName": "Intent",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "reply_needed",
+                  "value": "reply_needed"
+                },
+                {
+                  "name": "meeting_request",
+                  "value": "meeting_request"
+                },
+                {
+                  "name": "informational",
+                  "value": "informational"
+                },
+                {
+                  "name": "follow_up",
+                  "value": "follow_up"
+                },
+                {
+                  "name": "spam",
+                  "value": "spam"
+                },
+                {
+                  "name": "no_action",
+                  "value": "no_action"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Priority Score",
+              "displayName": "Priority Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        -208
+      ],
+      "id": "cd77bc70-2a85-4930-babe-3f4b5c856bff",
+      "name": "Create a record1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "KPMecmp5PJDbMZgt",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a record1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ebbcf421-c2ed-445d-af96-83fddc1a8ade",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e4bc470a17a5c3f59165cae5f46926a2e1fad5af7e2dc315d2d9ff334c7bd429"
+  },
+  "nodeGroups": [],
+  "id": "mMUtdexmcqHH5146",
+  "tags": []
+}
